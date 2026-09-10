@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="mr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#09070d">
+<title>आपला मंडळ</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#07060b;color:#fff;font-family:Arial,sans-serif;min-height:100vh}
+.wrap{max-width:760px;margin:auto;padding:28px 16px 50px}
+h1{font-size:30px;margin:0 0 6px}
+.sub{color:#b8a9c8;margin-bottom:24px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card,.panel{background:linear-gradient(145deg,#191322cc,#0e0b15dd);border:1px solid #8d42ff66;border-radius:20px;box-shadow:0 0 30px #7c2cff18;backdrop-filter:blur(12px)}
+.card{padding:18px}
+.label{font-size:13px;color:#aaa}
+.value{font-size:24px;font-weight:700;color:#c17aff;margin-top:7px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+button{border:1px solid #a44cff99;border-radius:16px;padding:17px;background:linear-gradient(135deg,#7b20ff,#bd42ff);color:white;font-weight:700;font-size:16px;cursor:pointer}
+button.secondary{background:#17111f}
+.panel{padding:18px;margin-top:14px}
+.hidden{display:none}
+input,select{width:100%;padding:14px;margin:7px 0 14px;border-radius:12px;border:1px solid #6f43a066;background:#100d16;color:#fff;font-size:16px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tx{padding:14px 0;border-bottom:1px solid #ffffff12}
+.tx:last-child{border-bottom:0}
+.in{color:#70e6a1}.out{color:#ff7b9d}
+.small{font-size:13px;color:#aaa}
+@media(max-width:560px){.cards{grid-template-columns:1fr}.actions{grid-template-columns:1fr}.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>आपला मंडळ</h1>
+<div class="sub">सिल्व्हर स्टार मित्र मंडळ</div>
+
+<div class="cards">
+<div class="card"><div class="label">Total Income</div><div id="income" class="value">₹0</div></div>
+<div class="card"><div class="label">Total Expense</div><div id="expense" class="value">₹0</div></div>
+<div class="card"><div class="label">Balance</div><div id="balance" class="value">₹0</div></div>
+</div>
+
+<div class="actions">
+<button onclick="showForm('Income')">＋ Add Income</button>
+<button onclick="showForm('Expense')">＋ Add Expense</button>
+</div>
+
+<div id="formPanel" class="panel hidden">
+<h2 id="formTitle">Add Income</h2>
+<label>Name / Description</label>
+<input id="name" type="text" placeholder="उदा. Rahul / Decoration">
+<label>Amount</label>
+<input id="amount" type="number" min="0" placeholder="₹ Amount">
+<div class="row">
+<div><label>Date</label><input id="date" type="date"></div>
+<div><label>Payment Method</label>
+<select id="method"><option>Cash</option><option>UPI</option><option>Bank</option></select></div>
+</div>
+<label>Category</label>
+<select id="category"></select>
+<div class="actions">
+<button onclick="saveTx()">Save</button>
+<button class="secondary" onclick="hideForm()">Cancel</button>
+</div>
+</div>
+
+<div class="panel">
+<h2>Recent Transactions</h2>
+<div id="transactions"><div class="small">No transactions yet.</div></div>
+</div>
+</div>
+
+<script>
+(function(){
+const KEY='aapla_mandal_v4';
+let type='Income';
+let tx=JSON.parse(localStorage.getItem(KEY)||'[]');
+
+const $=id=>document.getElementById(id);
+function money(n){return '₹'+Number(n||0).toLocaleString('en-IN')}
+function render(){
+ let inc=tx.filter(x=>x.type==='Income').reduce((s,x)=>s+Number(x.amount),0);
+ let exp=tx.filter(x=>x.type==='Expense').reduce((s,x)=>s+Number(x.amount),0);
+ $('income').textContent=money(inc);
+ $('expense').textContent=money(exp);
+ $('balance').textContent=money(inc-exp);
+ $('transactions').innerHTML=tx.length?tx.slice().reverse().map(x=>`
+ <div class="tx">
+ <b>${escapeHtml(x.name)}</b>
+ <div class="${x.type==='Income'?'in':'out'}">${x.type==='Income'?'+':'-'} ${money(x.amount)}</div>
+ <div class="small">${escapeHtml(x.category)} · ${escapeHtml(x.method)} · ${escapeHtml(x.date)}</div>
+ </div>`).join(''):'<div class="small">No transactions yet.</div>';
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+window.showForm=function(t){
+ type=t;
+ $('formPanel').classList.remove('hidden');
+ $('formTitle').textContent='Add '+t;
+ $('name').value=''; $('amount').value='';
+ $('date').value=new Date().toISOString().slice(0,10);
+ const cats=t==='Income'?['Vargani','Donation','Other Income']:['Decoration','Lighting','Transport','Prasad','Pooja Samagri','Haar & Flower'];
+ $('category').innerHTML=cats.map(c=>`<option>${c}</option>`).join('');
+ $('name').focus();
+}
+window.hideForm=function(){$('formPanel').classList.add('hidden')}
+window.saveTx=function(){
+ const name=$('name').value.trim(), amount=Number($('amount').value);
+ if(!name){alert('Name / Description भरा');return}
+ if(!amount || amount<=0){alert('Valid amount भरा');return}
+ tx.push({id:Date.now(),type,name,amount,date:$('date').value||new Date().toISOString().slice(0,10),method:$('method').value,category:$('category').value});
+ localStorage.setItem(KEY,JSON.stringify(tx));
+ render(); hideForm(); alert('Transaction saved ✅');
+}
+render();
+})();
+</script>
+</body>
+</html>
